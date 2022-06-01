@@ -1,0 +1,1 @@
+locust --host='https://api.rinz.io'

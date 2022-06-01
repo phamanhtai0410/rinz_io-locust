@@ -1,0 +1,27 @@
+# File: docker-compose.yml
+# Created at 03/11/2021
+
+version: '3'
+
+services:
+  benchmark:
+    # Name the service container
+    image: benchmark-service
+    container_name: benchmark-service
+    build: ./
+    restart: on-failure
+
+    volumes:
+      - ./:/webapps/service
+
+    ports:
+      - "8889:8089"
+
+    networks:
+      - same-network
+
+    command: supervisord -n -c /etc/supervisor.d/supervisord.conf
+
+networks:
+  same-network:
+    external: true

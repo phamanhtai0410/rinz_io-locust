@@ -4,13 +4,13 @@
         -
         -
 """
-from locust import HttpUser, constant_throughput
+from locust import HttpUser, constant_throughput, task
 from pydash import get
 
 from helper.wallet import Wallet
 import json
 
-with open("../fake_account.json") as f:
+with open("fake_stag_accounts.json") as f:
     accounts = json.load(f)
 
 
@@ -18,44 +18,47 @@ class IdService(HttpUser):
     wait_time = constant_throughput(1)
 
     def __init__(self, *args, **kwargs):
-        super().__init__(args, kwargs)
-        self.wallet = None
+        super().__init__(*args, **kwargs)
+        _account = accounts.pop()
+        print(_account)
+        self.wallet = Wallet(
+            public_address=get(_account, 'address'),
+            private_key=get(_account, 'private_key'),
+            host=''
+        )
 
     def on_start(self):
         """
         - Login
         :return:
         """
-        _account = accounts.pop()
-        self.wallet = Wallet(
-            public_address=get(_account, 'public_address'),
-            private_key=get(_account, 'private_key'),
-            host=''
-        )
 
-        obj = self.client.get('/v1/user/auth/validate', params={
+        obj = self.client.get('/v1/id/auth/message', params={
             'public_address': self.wallet.public_address
         })
-        print(obj)
-        assert obj, 'Get message fail'
         _json = obj.json()
 
-        _msg = get(_json, 'data.message')
-        assert _msg, "Message is None"
-        _signature = wallet.sign_msg(_msg)
-        _nonce = pydash.get(_json, 'data.nonce')
+        _msg = get(_json, 'data.sign_msg')
+        _signature = self.wallet.sign_msg(_msg)
+        _nonce = get(_json, 'data.nonce')
         print(_signature)
 
-        _res = self.client.post("/v1/user/auth/login", json={
-            "publicAddress": wallet.public_address,
+        _res = self.client.post("/v1/id/auth/login", json={
+            "public_address": self.wallet.public_address,
             "signature": _signature,
             "nonce": _nonce
         }, headers={'content-type': 'application/json'})
         _json = _res.json()
-        print('_json', _json)
-        _access_token = pydash.get(_json, 'data.accessToken', default=None)
-        print(_access_token)
-        assert _access_token, 'Get token fail'
+        _access_token = get(_json, 'data.access_token', default=None)
         self.client.headers = {
             'Authorization': f'Bearer {_access_token}'
         }
+
+    @task
+    def get_me(self):
+        obj = self.client.get(f'/v1/id/user/{self.wallet.public_address}')
+        # print(obj.json())
+
+    @task
+    def get_my_assets(self):
+        obj = self.client.get('/v1/nft/my-nft')

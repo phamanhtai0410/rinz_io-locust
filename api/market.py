@@ -17,8 +17,8 @@ import json
 
 
 class MarketService(HttpUser):
-    # wait_time = constant_throughput(1)
-    #
+    wait_time = constant_throughput(1)
+    
     # def __init__(self, *args, **kwargs):
     #     super().__init__(*args, **kwargs)
     #     _account = accounts.pop()
